@@ -1,0 +1,8 @@
+[package]
+name = "boojum_bench_poseidon2"
+version = "0.1.0"
+edition = "2021"
+type = "bin"
+
+[dependencies]
+boojum = { path = "../zksync-crypto/crates/boojum" }
