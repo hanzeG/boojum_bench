@@ -26,6 +26,24 @@ use boojum::cs::gates::poseidon2::Poseidon2FlattenedGate;
 use boojum::cs::traits::gate::GatePlacementStrategy;
 use boojum::cs::{CSGeometry, Place, Variable};
 
+use boojum::algebraic_props::round_function::AbsorptionModeOverwrite;
+use boojum::algebraic_props::sponge::GoldilocksPoseidonSponge;
+use boojum::cs::cs_builder_verifier::CsVerifierBuilder;
+use boojum::cs::implementations::{
+    pow::NoPow, prover::ProofConfig, transcript::GoldilocksPoisedonTranscript,
+};
+use boojum::field::goldilocks::{GoldilocksExt2, GoldilocksField};
+use chrono::Utc;
+use serde_json::json;
+use std::fs::{create_dir_all, File};
+use std::io::Write;
+
+/// Gets the current timestamp in a human-readable format.
+fn get_timestamp() -> String {
+    let now = Utc::now();
+    now.format("%Y-%m-%d_%H-%M-%S").to_string()
+}
+
 fn main() {
     let geometry = CSGeometry {
         num_columns_under_copy_permutation: 80,
@@ -87,4 +105,72 @@ fn main() {
     println!("Checking if satisfied");
     let mut owned_cs = owned_cs.into_assembly::<Global>();
     assert!(owned_cs.check_if_satisfied(&worker));
+
+    // Configure proof generation settings
+    let lde_factor_to_use = 32;
+    let mut proof_config = ProofConfig::default();
+    proof_config.fri_lde_factor = lde_factor_to_use;
+    proof_config.pow_bits = 0;
+
+    // Generate the proof and verification key
+    let (proof, vk) = owned_cs.prove_one_shot::<
+            GoldilocksExt2,
+            GoldilocksPoisedonTranscript,
+            GoldilocksPoseidonSponge<AbsorptionModeOverwrite>,
+            NoPow,
+        >(&worker, proof_config, ());
+
+    // Create the data directory if it does not exist
+    create_dir_all("data").expect("Unable to create data directory");
+
+    // Generate a timestamp for file naming
+    let timestamp = get_timestamp();
+
+    // Serialize proof to JSON and write to data/proof_TIMESTAMP.json
+    let proof_json = json!(proof);
+    let mut proof_file = File::create(format!("data/proof_{}.json", timestamp))
+        .expect("Unable to create data/proof.json");
+    writeln!(proof_file, "{}", proof_json).expect("Unable to write to data/proof.json");
+
+    // Serialize verification key to JSON and write to data/vk_TIMESTAMP.json
+    let vk_json = json!(vk);
+    let mut vk_file =
+        File::create(format!("data/vk_{}.json", timestamp)).expect("Unable to create data/vk.json");
+    writeln!(vk_file, "{}", vk_json).expect("Unable to write to data/vk.json");
+
+    // Serialize public inputs to JSON and write to data/public_TIMESTAMP.json
+    let public_inputs_json = json!(proof.public_inputs);
+    let mut pubs_file = File::create(format!("data/public_{}.json", timestamp))
+        .expect("Unable to create data/public.json");
+    writeln!(pubs_file, "{}", public_inputs_json).expect("Unable to write to data/public.json");
+
+    println!(
+        "Proof, verification key, and public inputs have been generated in the data directory."
+    );
+
+    // Verification process
+    let builder_impl = CsVerifierBuilder::<F, GoldilocksExt2>::new_from_parameters(geometry);
+    let builder = new_builder::<_, F>(builder_impl);
+    let builder =
+        Poseidon2Gate::configure_builder(builder, GatePlacementStrategy::UseGeneralPurposeColumns);
+    let builder = ConstantsAllocatorGate::configure_builder(
+        builder,
+        GatePlacementStrategy::UseGeneralPurposeColumns,
+    );
+    let builder =
+        NopGate::configure_builder(builder, GatePlacementStrategy::UseGeneralPurposeColumns);
+    let verifier = builder.build(());
+
+    // Verify the proof
+    let is_valid = verifier.verify::<
+        GoldilocksPoseidonSponge<AbsorptionModeOverwrite>,
+        GoldilocksPoisedonTranscript,
+        NoPow
+    >(
+        (),
+        &vk,
+        &proof,
+    );
+
+    println!("Is the proof valid? {}", is_valid);
 }
