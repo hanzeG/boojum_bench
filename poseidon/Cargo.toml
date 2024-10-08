@@ -1,5 +1,5 @@
 [package]
-name = "boojum_bench_poseidon"
+name = "poseidon"
 version = "0.1.0"
 edition = "2021"
 type = "bin"

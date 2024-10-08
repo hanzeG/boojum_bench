@@ -1,5 +1,5 @@
 [package]
-name = "boojum_bench_poseidon2"
+name = "poseidon2"
 version = "0.1.0"
 edition = "2021"
 type = "bin"
@@ -8,3 +8,4 @@ type = "bin"
 boojum = { path = "../zksync-crypto/crates/boojum" }
 serde_json = "1.0"
 chrono = "0.4"
+ark-std = { version = "0.3", features = ["print-trace"] }

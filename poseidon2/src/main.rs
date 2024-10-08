@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(generic_const_exprs)]
+use ark_std::{end_timer, start_timer};
 
 use boojum::cs::gates::ConstantAllocatableCS;
 use boojum::cs::traits::cs::ConstraintSystem;
@@ -112,12 +113,14 @@ fn main() {
     proof_config.pow_bits = 0;
 
     // Generate the proof and verification key
+    let timer_create_proof = start_timer!(|| "create proof");
     let (proof, vk) = owned_cs.prove_one_shot::<
             GoldilocksExt2,
             GoldilocksPoisedonTranscript,
             GoldilocksPoseidonSponge<AbsorptionModeOverwrite>,
             NoPow,
         >(&worker, proof_config, ());
+    end_timer!(timer_create_proof);
 
     // Create the data directory if it does not exist
     create_dir_all("data").expect("Unable to create data directory");
@@ -161,6 +164,7 @@ fn main() {
     let verifier = builder.build(());
 
     // Verify the proof
+    let timer_verify = start_timer!(|| "verify");
     let is_valid = verifier.verify::<
         GoldilocksPoseidonSponge<AbsorptionModeOverwrite>,
         GoldilocksPoisedonTranscript,
@@ -170,6 +174,7 @@ fn main() {
         &vk,
         &proof,
     );
+    end_timer!(timer_verify);
 
     println!("Is the proof valid? {}", is_valid);
 }

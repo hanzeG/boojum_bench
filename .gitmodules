@@ -1,3 +1,0 @@
-[submodule "zksync-crypto"]
-	path = zksync-crypto
-	url = https://github.com/hanzeG/zksync-crypto.git
