@@ -9,7 +9,6 @@ use boojum::dag::CircuitResolverOpts;
 use boojum::field::Field;
 use std::alloc::Global;
 
-use boojum::cs::gates::poseidon2::*;
 use boojum::worker::Worker;
 type F = boojum::field::goldilocks::GoldilocksField;
 type RCfg = <boojum::config::DevCSConfig as CSConfig>::ResolverConfig;

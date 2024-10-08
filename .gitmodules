@@ -1,3 +1,0 @@
-[submodule "poseidon/zksync-crypto"]
-	path = poseidon/zksync-crypto
-	url = https://github.com/hanzeG/zksync-crypto.git
